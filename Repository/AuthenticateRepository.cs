@@ -8,11 +8,15 @@ namespace RotiMakan.Repository
     {
         private readonly UserManager<IdentityModel> userManager;
         private readonly SignInManager<IdentityModel> signInManager;
+        private readonly RoleManager<IdentityRole> roleManager;
+        private readonly AppDbContext context;
 
-        public AuthenticateRepository(UserManager<IdentityModel> userManager, SignInManager<IdentityModel> signInManager)
+        public AuthenticateRepository(UserManager<IdentityModel> userManager, SignInManager<IdentityModel> signInManager,RoleManager<IdentityRole> roleManager,AppDbContext context)
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
+            this.roleManager = roleManager;
+            this.context = context;
         }
 
         public async Task<IdentityResult> SignUp(SignUpModel signUpModel)
@@ -28,8 +32,32 @@ namespace RotiMakan.Repository
             };
 
             var result = await userManager.CreateAsync(user, signUpModel.Password);
-            var roleAdded = await userManager.AddToRoleAsync(user, signUpModel.Service);
-            return(result.Succeeded && roleAdded.Succeeded) ? IdentityResult.Success : IdentityResult.Failed();
+            if (result.Succeeded)
+            {
+                IdentityResult roleAdded;
+                if (roleManager.RoleExistsAsync(signUpModel.Service).Result)
+                {
+                    roleAdded = await userManager.AddToRoleAsync(user, signUpModel.Service);
+                }
+                else
+                {
+                    await roleManager.CreateAsync(new IdentityRole(signUpModel.Service));
+                    roleAdded = await userManager.AddToRoleAsync(user, signUpModel.Service);
+                }
+                if (roleAdded.Succeeded)
+                {
+                    return result;
+                }
+                else
+                {
+                    return roleAdded;
+                }
+            }
+            else
+            {
+                return result;
+            }
+
         }
 
         public async Task<SignInResult> Login(LoginModel loginModel)

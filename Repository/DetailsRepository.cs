@@ -31,6 +31,7 @@ namespace RotiMakan.Repository
                     Phone = item.PhoneNumber,
                     Service = (await userManager.GetRolesAsync(item)).FirstOrDefault()
                 };
+                toReturn.Add(user);
             }
             return toReturn;
         }
